@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scanBtn = document.getElementById('scan-btn');
     const sniffBtn = document.getElementById('sniff-btn');
     const watchBtn = document.getElementById('watch-btn');
+    const folderBtn = document.getElementById('folder-btn');
     
     let isSniffing = false;
     let isWatching = false;
@@ -50,6 +51,14 @@ document.addEventListener('DOMContentLoaded', () => {
             sniffBtn.textContent = 'Start Monitor';
             sniffBtn.classList.replace('danger', 'success');
             isSniffing = false;
+        }
+    });
+
+    folderBtn.addEventListener('click', async () => {
+        const res = await fetch('/api/watchdog/select_folder', { method: 'POST' });
+        const data = await res.json();
+        if(data.status === 'success') {
+            alert(`Selected folder: ${data.folder}`);
         }
     });
 

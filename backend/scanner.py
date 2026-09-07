@@ -35,6 +35,12 @@ def arp_scan(timeout=2, iface=None):
         for s, r in ans:
             devices.append({'ip': r.psrc, 'mac': r.hwsrc})
         return devices
+    except RuntimeError as e:
+        if "winpcap is not installed" in str(e).lower() or "npcap" in str(e).lower():
+            print("[!] Npcap is missing. Cannot perform ARP scan.")
+            return [{'ip': 'Error', 'mac': 'Missing Npcap', 'hostname': 'Install Npcap on Windows', 'vendor': 'N/A'}]
+        print(f"[!] ARP scan error: {e}")
+        return []
     except Exception as e:
         print(f"[!] ARP scan error: {e}")
         return []

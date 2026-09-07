@@ -116,15 +116,33 @@ def stop_sniffing():
         detector_thread = None
     return {"status": "stopped"}
 
+watchdog_folder = os.path.expanduser("~/Documents")
+
+@app.post("/api/watchdog/select_folder")
+def select_watchdog_folder():
+    global watchdog_folder
+    import tkinter as tk
+    from tkinter import filedialog
+    # Create a hidden root window
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes('-topmost', True)
+    folder_path = filedialog.askdirectory(title="Select Folder to Monitor")
+    root.destroy()
+    
+    if folder_path:
+        watchdog_folder = folder_path
+        return {"status": "success", "folder": folder_path}
+    return {"status": "cancelled", "folder": watchdog_folder}
+
 @app.post("/api/watchdog/start")
 def start_watching():
     global watchdog_observer
     if watchdog_observer is None:
-        # Default watch dir for now
-        dirs = [os.path.expanduser("~/Documents")]
+        dirs = [watchdog_folder]
         watchdog_observer = start_watchdog(dirs, on_alert_sync)
-        return {"status": "started"}
-    return {"status": "already running"}
+        return {"status": "started", "folder": watchdog_folder}
+    return {"status": "already running", "folder": watchdog_folder}
 
 @app.post("/api/watchdog/stop")
 def stop_watching():

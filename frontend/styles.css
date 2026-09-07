@@ -201,6 +201,18 @@ body {
     box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
 }
 
+.btn.info {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: var(--accent-orange);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.btn.info:hover {
+    background-color: var(--accent-orange);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+}
+
 .btn.danger {
     background-color: rgba(239, 68, 68, 0.1);
     color: var(--accent-red);

@@ -53,7 +53,16 @@ class SnifferThread(threading.Thread):
         
     def run(self):
         print(f"[*] Packet sniffing started on {self.iface} (Mode: {self.mode})")
-        sniff(prn=self.handle_pkt, store=0, iface=self.iface, stop_filter=self.should_stop)
+        try:
+            sniff(prn=self.handle_pkt, store=0, iface=self.iface, stop_filter=self.should_stop)
+        except RuntimeError as e:
+            if "winpcap is not installed" in str(e).lower() or "npcap" in str(e).lower():
+                print("[!] Npcap is missing. Cannot sniff packets.")
+                log_alert("High", "Local", "System", "Npcap is required on Windows for packet sniffing. Please install it.")
+            else:
+                print(f"[!] Sniffer crashed: {e}")
+                log_alert("High", "Local", "System", f"Sniffer crashed: {e}")
+            self.running.clear()
     
     def handle_pkt(self, pkt):
         if self.mode == 'application':
