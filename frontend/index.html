@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Network Guardian</title>
+    <meta name="description" content="Local network monitoring and anomaly detection dashboard">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">🛡</div>
+                <h1>Guardian</h1>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item active" data-target="dashboard">
+                    <span class="icon">📊</span> Dashboard
+                </button>
+                <button class="nav-item" data-target="devices">
+                    <span class="icon">💻</span> Devices
+                </button>
+                <button class="nav-item" data-target="alerts">
+                    <span class="icon">⚠️</span> Alerts
+                </button>
+                <button class="nav-item" data-target="settings">
+                    <span class="icon">⚙️</span> Settings
+                </button>
+            </nav>
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>System Online</span>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <h2 id="page-title">Dashboard</h2>
+                <div class="top-controls">
+                    <button id="scan-btn" class="btn primary">Scan Network</button>
+                    <button id="sniff-btn" class="btn success">Start Monitor</button>
+                    <button id="watch-btn" class="btn danger">Enable File Watch</button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- Dashboard Section -->
+                <section id="dashboard" class="page-section active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Total Devices</h3>
+                            <div class="stat-value" id="stat-devices">0</div>
+                        </div>
+                        <div class="stat-card danger-card">
+                            <h3>High Threats</h3>
+                            <div class="stat-value" id="stat-threats">0</div>
+                        </div>
+                        <div class="stat-card warning-card">
+                            <h3>Active Alerts</h3>
+                            <div class="stat-value" id="stat-alerts">0</div>
+                        </div>
+                        <div class="stat-card info-card">
+                            <h3>Packets/Sec</h3>
+                            <div class="stat-value" id="stat-pps">0</div>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-panels">
+                        <div class="panel">
+                            <h3>Recent Alerts</h3>
+                            <div class="alert-list" id="recent-alerts">
+                                <!-- Alerts injected via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Devices Section -->
+                <section id="devices" class="page-section">
+                    <div class="panel">
+                        <h3>Discovered Devices</h3>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>IP Address</th>
+                                        <th>MAC Address</th>
+                                        <th>Hostname</th>
+                                        <th>Vendor</th>
+                                        <th>Threat Level</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="device-table-body">
+                                    <!-- Devices injected via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Alerts Section -->
+                <section id="alerts" class="page-section">
+                    <div class="panel full-height">
+                        <h3>Security Alerts log</h3>
+                        <div class="alert-feed" id="full-alerts-feed">
+                            <!-- Full alerts injected via JS -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Settings Section -->
+                <section id="settings" class="page-section">
+                    <div class="panel">
+                        <h3>Application Settings</h3>
+                        <p class="settings-desc">Settings configuration is under development.</p>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
