@@ -32,12 +32,34 @@ document.addEventListener('DOMContentLoaded', () => {
     scanBtn.addEventListener('click', async () => {
         scanBtn.textContent = 'Scanning...';
         scanBtn.style.opacity = '0.7';
-        await fetch('/api/scan', { method: 'POST' });
-        setTimeout(() => {
-            scanBtn.textContent = 'Scan Network';
-            scanBtn.style.opacity = '1';
-            fetchDevices();
-        }, 5000);
+        scanBtn.disabled = true;
+        
+        const res = await fetch('/api/scan', { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.message === 'Scan already in progress') {
+            return;
+        }
+
+        const pollInterval = setInterval(async () => {
+            try {
+                const statusRes = await fetch('/api/status');
+                const statusData = await statusRes.json();
+                
+                if (statusData.scanning) {
+                    scanBtn.textContent = `Scanning... ${statusData.scan_progress || 0}%`;
+                } else {
+                    clearInterval(pollInterval);
+                    scanBtn.textContent = 'Scan Network';
+                    scanBtn.style.opacity = '1';
+                    scanBtn.disabled = false;
+                    fetchDevices();
+                    alert("Scan complete! The network devices list has been updated.");
+                }
+            } catch (e) {
+                console.error("Polling error:", e);
+            }
+        }, 1000);
     });
 
     sniffBtn.addEventListener('click', async () => {
@@ -55,10 +77,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     folderBtn.addEventListener('click', async () => {
-        const res = await fetch('/api/watchdog/select_folder', { method: 'POST' });
-        const data = await res.json();
-        if(data.status === 'success') {
-            alert(`Selected folder: ${data.folder}`);
+        const path = prompt("Enter the absolute path of the folder to monitor (e.g. C:\\\\Users\\\\...):");
+        if(path) {
+            try {
+                const res = await fetch('/api/watchdog/select_folder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({folder: path})
+                });
+                const data = await res.json();
+                if(data.status === 'success') {
+                    alert(`Selected folder: ${data.folder}`);
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            } catch (e) {
+                alert(`Error: ${e.message}`);
+            }
         }
     });
 
@@ -132,6 +167,29 @@ document.addEventListener('DOMContentLoaded', () => {
             data.devices.forEach(dev => {
                 if(dev.threat === 'High') highThreats++;
                 
+                let detailsHtml = '';
+                if (dev.details) {
+                    if (dev.details.open_ports && dev.details.open_ports.length > 0) {
+                        detailsHtml += `<div><strong>Open Ports:</strong> ${dev.details.open_ports.join(', ')}</div>`;
+                    }
+                    if (dev.details.suspicious_ports && dev.details.suspicious_ports.length > 0) {
+                        detailsHtml += `<div><strong>Suspicious Ports:</strong> <span style="color: red;">${dev.details.suspicious_ports.join(', ')}</span></div>`;
+                    }
+                    if (dev.details.is_blacklisted) {
+                        detailsHtml += `<div><strong>Blacklisted:</strong> <span style="color: red;">Yes</span></div>`;
+                    }
+                    if (dev.details.traffic_spike) {
+                        detailsHtml += `<div><strong>Anomalous Traffic:</strong> <span style="color: orange;">Detected</span></div>`;
+                    }
+                }
+                
+                // Fallback if no specific details are recorded but threat is high/medium (likely historical scan data)
+                if (!detailsHtml) {
+                    if (dev.threat === 'High' || dev.threat === 'Medium') {
+                        detailsHtml = '<div style="color: var(--text-muted)"><i>Historical data (run scan again for details)</i></div>';
+                    }
+                }
+                
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${dev.ip}</strong></td>
@@ -139,6 +197,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${dev.hostname}</td>
                     <td>${dev.vendor}</td>
                     <td><span class="threat-badge ${dev.threat}">${dev.threat}</span></td>
+                    <td style="font-size: 0.9em;">
+                        ${detailsHtml}
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });

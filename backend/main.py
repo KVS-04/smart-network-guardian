@@ -1,4 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -32,6 +33,8 @@ watchdog_observer = None
 target_ports = set()
 active_websockets = []
 main_loop = None
+is_scanning = False
+scan_progress = 0
 
 def notify_clients(message: dict):
     for ws in active_websockets:
@@ -61,30 +64,51 @@ def get_status():
     return {
         "sniffing": sniffer_thread is not None and sniffer_thread.running.is_set(),
         "monitoring": watchdog_observer is not None,
-        "nmap_available": HAS_NMAP
+        "nmap_available": HAS_NMAP,
+        "scanning": is_scanning,
+        "scan_progress": scan_progress
     }
 
 @app.post("/api/scan")
 def scan_network(background_tasks: BackgroundTasks):
     def run_scan():
-        devices = arp_scan()
-        for d in devices:
-            details = {}
-            if HAS_NMAP:
-                details = nmap_scan_host(d['ip'])
+        global is_scanning, scan_progress
+        try:
+            scan_progress = 5  # ARP scan starting
+            devices = arp_scan()
+            scan_progress = 20  # ARP scan complete
             
-            dinfo = {
-                'ip': d['ip'],
-                'mac': d['mac'],
-                'hostname': resolve_hostname(d['ip']),
-                'vendor': get_vendor(d['mac']),
-                'details': details
-            }
-            dinfo['threat'] = compute_threat_score(dinfo)
-            log_device(dinfo)
-    
-    background_tasks.add_task(run_scan)
-    return {"message": "Scan started in background"}
+            total = len(devices)
+            for i, d in enumerate(devices):
+                details = {}
+                if HAS_NMAP:
+                    details = nmap_scan_host(d['ip'])
+                
+                dinfo = {
+                    'ip': d['ip'],
+                    'mac': d['mac'],
+                    'hostname': resolve_hostname(d['ip']),
+                    'vendor': get_vendor(d['mac']),
+                    'details': details
+                }
+                dinfo['threat'] = compute_threat_score(dinfo)
+                log_device(dinfo)
+                
+                # Update progress
+                if total > 0:
+                    scan_progress = 20 + int((i + 1) / total * 80)
+                    
+            scan_progress = 100
+        finally:
+            is_scanning = False
+
+    global is_scanning, scan_progress
+    if not is_scanning:
+        is_scanning = True
+        scan_progress = 0
+        background_tasks.add_task(run_scan)
+        return {"message": "Scan started in background"}
+    return {"message": "Scan already in progress"}
 
 @app.get("/api/devices")
 def fetch_devices():
@@ -118,22 +142,18 @@ def stop_sniffing():
 
 watchdog_folder = os.path.expanduser("~/Documents")
 
+class FolderRequest(BaseModel):
+    folder: str
+
 @app.post("/api/watchdog/select_folder")
-def select_watchdog_folder():
+def select_watchdog_folder(req: FolderRequest):
     global watchdog_folder
-    import tkinter as tk
-    from tkinter import filedialog
-    # Create a hidden root window
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes('-topmost', True)
-    folder_path = filedialog.askdirectory(title="Select Folder to Monitor")
-    root.destroy()
-    
-    if folder_path:
-        watchdog_folder = folder_path
-        return {"status": "success", "folder": folder_path}
-    return {"status": "cancelled", "folder": watchdog_folder}
+    import os
+    if os.path.isdir(req.folder):
+        watchdog_folder = req.folder
+        return {"status": "success", "folder": watchdog_folder}
+    else:
+        return {"status": "error", "message": "Invalid directory path"}
 
 @app.post("/api/watchdog/start")
 def start_watching():

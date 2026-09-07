@@ -48,8 +48,8 @@ def arp_scan(timeout=2, iface=None):
 def nmap_scan_host(ip):
     if not HAS_NMAP:
         return {}
-    nm = nmap.PortScanner()
     try:
+        nm = nmap.PortScanner()
         nm.scan(ip, arguments='-T4 -sS -Pn --top-ports 100')
         host = nm[ip]
         open_ports = []
@@ -92,18 +92,44 @@ def compute_threat_score(device_info, traffic_stats=None):
     if traffic_stats is None:
         traffic_stats = {}
     score = 0
+    reasons = []
+    
+    if 'details' not in device_info:
+        device_info['details'] = {}
+        
     open_ports = device_info.get('details', {}).get('open_ports', [])
     if len(open_ports) >= 10:
         score += 3
+        reasons.append(f"High number of open ports ({len(open_ports)})")
     elif len(open_ports) >= 3:
         score += 1
+        reasons.append(f"Multiple open ports ({len(open_ports)})")
+        
     suspicious = {22,23,3389,445,5900}
-    if any(p in suspicious for p in open_ports):
+    found_suspicious = [p for p in open_ports if p in suspicious]
+    if found_suspicious:
         score += 2
+        reasons.append(f"Suspicious ports open: {found_suspicious}")
+        device_info['details']['suspicious_ports'] = found_suspicious
+    else:
+        device_info['details']['suspicious_ports'] = []
+        
     if device_info.get('ip') in IP_BLACKLIST:
         score += 4
+        reasons.append("IP found in local blacklist")
+        device_info['details']['is_blacklisted'] = True
+    else:
+        device_info['details']['is_blacklisted'] = False
+        
     if traffic_stats.get('spike', False):
         score += 2
+        reasons.append("Anomalous traffic spike detected")
+        device_info['details']['traffic_spike'] = True
+    else:
+        device_info['details']['traffic_spike'] = False
+        
+    device_info['details']['threat_reasons'] = reasons
+    
     if score >= 5:
         return "High"
     elif score >= 2:

@@ -53,7 +53,7 @@ def get_alerts(limit=50):
 def get_devices():
     conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
     c = conn.cursor()
-    rows = c.execute("SELECT ip, mac, hostname, vendor, last_seen, threat, details FROM devices").fetchall()
+    rows = c.execute("SELECT ip, mac, hostname, vendor, last_seen, threat, details FROM devices ORDER BY last_seen DESC").fetchall()
     conn.close()
     
     devices = []
