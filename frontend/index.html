@@ -14,7 +14,7 @@
         <aside class="sidebar">
             <div class="logo">
                 <div class="logo-icon">🛡</div>
-                <h1>Guardian</h1>
+                <h1>Smart Network Guardian</h1>
             </div>
             <nav class="nav-menu">
                 <button class="nav-item active" data-target="dashboard">
@@ -40,12 +40,12 @@
         <main class="main-content">
             <header class="top-bar">
                 <h2 id="page-title">Dashboard</h2>
-                <div class="top-controls">
-                    <button id="scan-btn" class="btn primary">Scan Network</button>
-                    <button id="sniff-btn" class="btn success">Start Monitor</button>
-                    <button id="folder-btn" class="btn info">Select Folder</button>
-                    <button id="watch-btn" class="btn danger">Enable File Watch</button>
-                </div>
+                <div class="actions">
+                <button id="scan-btn" class="btn primary">Scan Network</button>
+                <button id="sniff-btn" class="btn success">Start Network Sniffer</button>
+                <button id="folder-btn" class="btn warning">Select Folder</button>
+                <button id="watch-btn" class="btn danger">Enable File Watch</button>
+            </div>
             </header>
 
             <div class="content-area">
@@ -92,6 +92,7 @@
                                         <th>MAC Address</th>
                                         <th>Hostname</th>
                                         <th>Vendor</th>
+                                        <th>Last Seen</th>
                                         <th>Threat Level</th>
                                         <th>Details & Reasons</th>
                                     </tr>
@@ -117,8 +118,80 @@
                 <!-- Settings Section -->
                 <section id="settings" class="page-section">
                     <div class="panel">
-                        <h3>Application Settings</h3>
-                        <p class="settings-desc">Settings configuration is under development.</p>
+                        <h3>Threat Intelligence Configuration</h3>
+                        <p class="text-muted" style="margin-bottom: 15px;">Configure the IP Blacklist for anomaly detection. IPs listed here will automatically be flagged with a HIGH threat score if detected during a network scan.</p>
+                        
+                        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                            <input type="text" id="new-blacklist-ip" placeholder="e.g. 192.168.1.50" style="padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); flex-grow: 1;">
+                            <button id="add-blacklist-btn" class="btn primary">Add to Blacklist</button>
+                        </div>
+
+                        <h4>Currently Blacklisted IPs</h4>
+                        <div class="table-container" style="margin-top: 10px;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>IP Address</th>
+                                        <th style="width: 100px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="blacklist-table-body">
+                                    <!-- Blacklist injected via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <hr style="border: 1px solid var(--border-color); margin: 30px 0;">
+
+                        <h3>Advanced Configuration</h3>
+                        
+                        <div class="settings-group" style="margin-bottom: 20px;">
+                            <label for="nmap-path" style="display: block; margin-bottom: 5px; font-weight: 500;">Nmap Executable Path</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="nmap-path" placeholder="e.g. C:\Program Files (x86)\Nmap\nmap.exe" style="padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); flex-grow: 1;">
+                                <button id="save-nmap-btn" class="btn primary">Save Path</button>
+                            </div>
+                            <small class="text-muted">Leave blank to use default system PATH.</small>
+                        </div>
+
+                        <div class="settings-group" style="margin-bottom: 20px;">
+                            <label for="pps-threshold" style="display: block; margin-bottom: 5px; font-weight: 500;">Anomaly Threshold (Packets/Sec)</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="number" id="pps-threshold" value="100" style="padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); width: 150px;">
+                                <button id="save-pps-btn" class="btn primary">Save Threshold</button>
+                            </div>
+                            <small class="text-muted">Triggers a High threat alert if a single device sends more packets than this in recent history.</small>
+                        </div>
+
+                        <div class="settings-group" style="margin-bottom: 20px;">
+                            <label for="scan-interval" style="display: block; margin-bottom: 5px; font-weight: 500;">Auto-Scan Interval</label>
+                            <div style="display: flex; gap: 10px;">
+                                <select id="scan-interval" style="padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); width: 150px;">
+                                    <option value="0">Never</option>
+                                    <option value="5">Every 5 minutes</option>
+                                    <option value="15">Every 15 minutes</option>
+                                    <option value="60">Every 1 hour</option>
+                                </select>
+                                <button id="save-interval-btn" class="btn primary">Save Interval</button>
+                            </div>
+                        </div>
+
+                        <div class="settings-group" style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: 500;">Theme Accent Color</label>
+                            <div style="display: flex; gap: 10px;" id="theme-selector">
+                                <button class="btn theme-btn" data-theme="default" style="background-color: #3b82f6; color: white;">Neon Blue</button>
+                                <button class="btn theme-btn" data-theme="cyber-green" style="background-color: #10b981; color: white;">Cyber Green</button>
+                                <button class="btn theme-btn" data-theme="hacker-red" style="background-color: #ef4444; color: white;">Hacker Red</button>
+                            </div>
+                        </div>
+
+                        <hr style="border: 1px solid var(--danger-color); margin: 30px 0;">
+
+                        <div class="danger-zone">
+                            <h3 style="color: var(--danger-color);">Danger Zone</h3>
+                            <p class="text-muted" style="margin-bottom: 15px;">Wipe all historical device records and security alerts from the database. This action cannot be undone.</p>
+                            <button id="clear-db-btn" class="btn danger">Clear Database History</button>
+                        </div>
                     </div>
                 </section>
             </div>

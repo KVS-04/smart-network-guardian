@@ -68,3 +68,11 @@ def get_devices():
             "details": json.loads(r[6]) if r[6] else {}
         })
     return devices
+
+def clear_database():
+    conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
+    c = conn.cursor()
+    c.execute("DELETE FROM devices")
+    c.execute("DELETE FROM alerts")
+    conn.commit()
+    conn.close()

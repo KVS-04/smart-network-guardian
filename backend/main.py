@@ -9,10 +9,11 @@ import time
 import os
 import asyncio
 
-from backend.database import init_db, get_alerts, get_devices, log_device
-from backend.scanner import arp_scan, nmap_scan_host, resolve_hostname, get_vendor, compute_threat_score, HAS_NMAP
+from backend.database import init_db, get_alerts, get_devices, log_device, clear_database
+from backend.scanner import arp_scan, nmap_scan_host, resolve_hostname, get_vendor, compute_threat_score, HAS_NMAP, IP_BLACKLIST
 from backend.sniffer import SnifferThread, AnomalyDetector, PortMonitorThread
 from backend.monitor import start_watchdog
+from backend.config import load_config, set_config_val
 
 app = FastAPI(title="Smart Network Guardian API")
 
@@ -149,11 +150,21 @@ class FolderRequest(BaseModel):
 def select_watchdog_folder(req: FolderRequest):
     global watchdog_folder
     import os
-    if os.path.isdir(req.folder):
-        watchdog_folder = req.folder
+    # Strip quotes if the user pasted a path with quotes (e.g. from Windows Explorer)
+    cleaned_path = req.folder.strip('\"\'')
+    if os.path.isdir(cleaned_path):
+        watchdog_folder = cleaned_path
         return {"status": "success", "folder": watchdog_folder}
     else:
-        return {"status": "error", "message": "Invalid directory path"}
+        return {"status": "error", "message": f"Invalid directory path: {cleaned_path}"}
+
+@app.get("/api/watchdog/status")
+def get_watchdog_status():
+    global watchdog_folder, watchdog_observer
+    return {
+        "folder": watchdog_folder,
+        "is_watching": watchdog_observer is not None
+    }
 
 @app.post("/api/watchdog/start")
 def start_watching():
@@ -172,6 +183,24 @@ def stop_watching():
         watchdog_observer.join(1)
         watchdog_observer = None
     return {"status": "stopped"}
+
+class IPRequest(BaseModel):
+    ip: str
+
+@app.get("/api/settings/blacklist")
+def get_blacklist():
+    return {"blacklist": list(IP_BLACKLIST)}
+
+@app.post("/api/settings/blacklist")
+def add_to_blacklist(req: IPRequest):
+    IP_BLACKLIST.add(req.ip)
+    return {"status": "success", "blacklist": list(IP_BLACKLIST)}
+
+@app.delete("/api/settings/blacklist")
+def remove_from_blacklist(req: IPRequest):
+    if req.ip in IP_BLACKLIST:
+        IP_BLACKLIST.remove(req.ip)
+    return {"status": "success", "blacklist": list(IP_BLACKLIST)}
 
 import psutil
 
@@ -203,6 +232,29 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception:
         if websocket in active_websockets:
             active_websockets.remove(websocket)
+
+@app.get("/api/settings/config")
+def get_config():
+    return load_config()
+
+class ConfigRequest(BaseModel):
+    nmap_path: str = None
+    pps_threshold: int = None
+    theme: str = None
+    scan_interval: int = None
+
+@app.post("/api/settings/config")
+def set_config(req: ConfigRequest):
+    if req.nmap_path is not None: set_config_val("nmap_path", req.nmap_path)
+    if req.pps_threshold is not None: set_config_val("pps_threshold", req.pps_threshold)
+    if req.theme is not None: set_config_val("theme", req.theme)
+    if req.scan_interval is not None: set_config_val("scan_interval", req.scan_interval)
+    return {"status": "success"}
+
+@app.post("/api/settings/clear_db")
+def clear_db():
+    clear_database()
+    return {"status": "success"}
 
 # Mount frontend
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

@@ -16,7 +16,7 @@ try:
 except Exception as e:
     print(f"[!] Could not update MAC vendor database: {e}")
 
-IP_BLACKLIST = {"10.138.235.196"}
+IP_BLACKLIST = {"10.138.235.196", "10.214.142.196"}
 
 def arp_scan(timeout=2, iface=None):
     try:
@@ -45,11 +45,17 @@ def arp_scan(timeout=2, iface=None):
         print(f"[!] ARP scan error: {e}")
         return []
 
+from backend.config import get_config_val
+
 def nmap_scan_host(ip):
     if not HAS_NMAP:
         return {}
     try:
-        nm = nmap.PortScanner()
+        nmap_path = get_config_val("nmap_path")
+        if nmap_path:
+            nm = nmap.PortScanner(nmap_search_path=[nmap_path, 'nmap', '/usr/bin/nmap', '/usr/local/bin/nmap', '/sw/bin/nmap', '/opt/local/bin/nmap'])
+        else:
+            nm = nmap.PortScanner()
         nm.scan(ip, arguments='-T4 -sS -Pn --top-ports 100')
         host = nm[ip]
         open_ports = []
@@ -65,7 +71,9 @@ def nmap_scan_host(ip):
         print("nmap scan error:", e)
         return {}
 
-def resolve_hostname(ip):
+import concurrent.futures
+
+def _resolve_hostname_internal(ip):
     try:
         return socket.gethostbyaddr(ip)[0]
     except:
@@ -80,13 +88,46 @@ def resolve_hostname(ip):
                         return parts[0]
         except:
             pass
+        try:
+            output = subprocess.check_output(["ping", "-a", "-n", "1", "-w", "200", ip], text=True, stderr=subprocess.DEVNULL)
+            for line in output.splitlines():
+                if line.startswith("Pinging") and "[" in line:
+                    parts = line.split()
+                    if len(parts) > 1 and parts[1] != ip:
+                        return parts[1]
+        except:
+            pass
     return "Unknown"
 
+def resolve_hostname(ip):
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future = executor.submit(_resolve_hostname_internal, ip)
+        try:
+            return future.result(timeout=0.5)
+        except concurrent.futures.TimeoutError:
+            return "Unknown"
+
 def get_vendor(mac):
+    # Check if MAC is randomized (locally administered)
+    # The second character of the first octet will be 2, 6, a, A, e, or E
+    if len(mac) >= 2 and mac[1] in '26aAeE':
+        return "Randomized MAC"
+    
     try:
         return mac_lookup.lookup(mac)
     except:
-        return "Unknown"
+        pass
+    
+    try:
+        # Fallback to Scapy's offline built-in MAC vendor database
+        from scapy.all import conf
+        manuf = conf.manufdb._get_manuf(mac)
+        if manuf:
+            return manuf
+    except:
+        pass
+        
+    return "Unknown"
 
 def compute_threat_score(device_info, traffic_stats=None):
     if traffic_stats is None:

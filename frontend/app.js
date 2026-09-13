@@ -65,19 +65,22 @@ document.addEventListener('DOMContentLoaded', () => {
     sniffBtn.addEventListener('click', async () => {
         if(!isSniffing) {
             await fetch('/api/sniff/start', { method: 'POST' });
-            sniffBtn.textContent = 'Stop Monitor';
+            sniffBtn.textContent = 'Stop Network Sniffer';
             sniffBtn.classList.replace('success', 'danger');
             isSniffing = true;
         } else {
             await fetch('/api/sniff/stop', { method: 'POST' });
-            sniffBtn.textContent = 'Start Monitor';
+            sniffBtn.textContent = 'Start Network Sniffer';
             sniffBtn.classList.replace('danger', 'success');
             isSniffing = false;
         }
     });
 
+    let hasSelectedFolder = false;
+    let selectedFolderPath = "";
+
     folderBtn.addEventListener('click', async () => {
-        const path = prompt("Enter the absolute path of the folder to monitor (e.g. C:\\\\Users\\\\...):");
+        const path = prompt("Enter the absolute path of the folder to monitor (e.g. C:\\Users\\veer1\\Downloads):");
         if(path) {
             try {
                 const res = await fetch('/api/watchdog/select_folder', {
@@ -87,7 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const data = await res.json();
                 if(data.status === 'success') {
-                    alert(`Selected folder: ${data.folder}`);
+                    hasSelectedFolder = true;
+                    selectedFolderPath = data.folder;
+                    alert(`Successfully selected folder: ${data.folder}`);
                 } else {
                     alert(`Error: ${data.message}`);
                 }
@@ -99,6 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     watchBtn.addEventListener('click', async () => {
         if(!isWatching) {
+            if (!hasSelectedFolder) {
+                alert("Please click 'Select Folder' and choose a folder before enabling the File Watch monitor.");
+                return;
+            }
             await fetch('/api/watchdog/start', { method: 'POST' });
             watchBtn.textContent = 'Disable File Watch';
             isWatching = true;
@@ -116,7 +125,14 @@ document.addEventListener('DOMContentLoaded', () => {
             sniffBtn.classList.replace('success', 'danger');
             isSniffing = true;
         }
-        if(data.monitoring) {
+    });
+
+    fetch('/api/watchdog/status').then(r => r.json()).then(data => {
+        if(data.folder) {
+            hasSelectedFolder = true;
+            selectedFolderPath = data.folder;
+        }
+        if(data.is_watching) {
             watchBtn.textContent = 'Disable File Watch';
             isWatching = true;
         }
@@ -196,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><span style="font-family: monospace; color: var(--text-muted)">${dev.mac}</span></td>
                     <td>${dev.hostname}</td>
                     <td>${dev.vendor}</td>
+                    <td class="text-muted" style="font-size: 0.85em;">${dev.last_seen}</td>
                     <td><span class="threat-badge ${dev.threat}">${dev.threat}</span></td>
                     <td style="font-size: 0.9em;">
                         ${detailsHtml}
@@ -228,4 +245,177 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchAlerts(); // Re-fetch all alerts on new alert
         }
     };
+
+    // Settings - Blacklist Management
+    const addBlacklistBtn = document.getElementById('add-blacklist-btn');
+    const newBlacklistIp = document.getElementById('new-blacklist-ip');
+    const blacklistTableBody = document.getElementById('blacklist-table-body');
+
+    async function fetchBlacklist() {
+        try {
+            const res = await fetch('/api/settings/blacklist');
+            const data = await res.json();
+            renderBlacklist(data.blacklist);
+        } catch (e) {
+            console.error("Error fetching blacklist", e);
+        }
+    }
+
+    function renderBlacklist(ips) {
+        blacklistTableBody.innerHTML = '';
+        ips.forEach(ip => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${ip}</strong></td>
+                <td>
+                    <button class="btn danger" onclick="removeBlacklistIp('${ip}')" style="padding: 4px 8px; font-size: 0.8em;">Remove</button>
+                </td>
+            `;
+            blacklistTableBody.appendChild(tr);
+        });
+    }
+
+    addBlacklistBtn.addEventListener('click', async () => {
+        const ip = newBlacklistIp.value.trim();
+        if(ip) {
+            try {
+                const res = await fetch('/api/settings/blacklist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: ip })
+                });
+                const data = await res.json();
+                if(data.status === 'success') {
+                    newBlacklistIp.value = '';
+                    renderBlacklist(data.blacklist);
+                }
+            } catch (e) {
+                console.error("Error adding IP", e);
+            }
+        }
+    });
+
+    window.removeBlacklistIp = async function(ip) {
+        try {
+            const res = await fetch('/api/settings/blacklist', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip: ip })
+            });
+            const data = await res.json();
+            if(data.status === 'success') {
+                renderBlacklist(data.blacklist);
+            }
+        } catch (e) {
+            console.error("Error removing IP", e);
+        }
+    };
+
+    // Fetch blacklist initially
+    fetchBlacklist();
+
+    // Advanced Configuration Management
+    const nmapPathInput = document.getElementById('nmap-path');
+    const ppsThresholdInput = document.getElementById('pps-threshold');
+    const scanIntervalSelect = document.getElementById('scan-interval');
+    
+    let autoScanTimer = null;
+
+    function applyTheme(themeName) {
+        document.documentElement.setAttribute('data-theme', themeName);
+        if (themeName === 'cyber-green') {
+            document.documentElement.style.setProperty('--accent-color', '#10b981');
+            document.documentElement.style.setProperty('--accent-hover', '#059669');
+        } else if (themeName === 'hacker-red') {
+            document.documentElement.style.setProperty('--accent-color', '#ef4444');
+            document.documentElement.style.setProperty('--accent-hover', '#dc2626');
+        } else {
+            // Default Neon Blue
+            document.documentElement.style.setProperty('--accent-color', '#3b82f6');
+            document.documentElement.style.setProperty('--accent-hover', '#2563eb');
+        }
+    }
+
+    async function fetchConfig() {
+        try {
+            const res = await fetch('/api/settings/config');
+            const data = await res.json();
+            
+            if (data.nmap_path) nmapPathInput.value = data.nmap_path;
+            if (data.pps_threshold) ppsThresholdInput.value = data.pps_threshold;
+            if (data.scan_interval !== undefined) {
+                scanIntervalSelect.value = data.scan_interval;
+                setupAutoScan(data.scan_interval);
+            }
+            if (data.theme) applyTheme(data.theme);
+        } catch (e) {
+            console.error("Error fetching config", e);
+        }
+    }
+
+    async function saveConfig(updates) {
+        try {
+            const res = await fetch('/api/settings/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert("Settings saved successfully!");
+            }
+        } catch (e) {
+            alert(`Error saving config: ${e.message}`);
+        }
+    }
+
+    document.getElementById('save-nmap-btn').addEventListener('click', () => {
+        saveConfig({ nmap_path: nmapPathInput.value.trim() });
+    });
+
+    document.getElementById('save-pps-btn').addEventListener('click', () => {
+        saveConfig({ pps_threshold: parseInt(ppsThresholdInput.value, 10) });
+    });
+
+    document.getElementById('save-interval-btn').addEventListener('click', () => {
+        const minutes = parseInt(scanIntervalSelect.value, 10);
+        saveConfig({ scan_interval: minutes });
+        setupAutoScan(minutes);
+    });
+
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const theme = e.target.getAttribute('data-theme');
+            applyTheme(theme);
+            saveConfig({ theme: theme });
+        });
+    });
+
+    document.getElementById('clear-db-btn').addEventListener('click', async () => {
+        if(confirm("Are you sure you want to completely wipe all historical devices and alerts? This cannot be undone.")) {
+            try {
+                const res = await fetch('/api/settings/clear_db', { method: 'POST' });
+                const data = await res.json();
+                if(data.status === 'success') {
+                    alert("Database cleared successfully!");
+                    fetchDevices();
+                    fetchAlerts();
+                }
+            } catch (e) {
+                alert(`Error clearing database: ${e.message}`);
+            }
+        }
+    });
+
+    function setupAutoScan(minutes) {
+        if (autoScanTimer) clearInterval(autoScanTimer);
+        if (minutes > 0) {
+            autoScanTimer = setInterval(() => {
+                if(!scanBtn.disabled) scanBtn.click();
+            }, minutes * 60 * 1000);
+        }
+    }
+
+    // Fetch initial config
+    fetchConfig();
 });

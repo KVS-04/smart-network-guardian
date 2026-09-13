@@ -13,7 +13,7 @@ class MassModifyHandler(FileSystemEventHandler):
         self.recent_mods = deque()
         self.lock = threading.Lock()
     
-    def on_modified(self, event):
+    def on_any_event(self, event):
         if event.is_directory:
             return
         ts = time.time()
@@ -22,8 +22,8 @@ class MassModifyHandler(FileSystemEventHandler):
             cutoff = ts - 60
             while self.recent_mods and self.recent_mods[0] < cutoff:
                 self.recent_mods.popleft()
-            if len(self.recent_mods) > 30:
-                msg = f"Mass file modifications detected ({len(self.recent_mods)} files/60s)"
+            if len(self.recent_mods) >= 20:
+                msg = f"Mass file modifications detected (>{len(self.recent_mods)} events/60s)"
                 self.alert("High", "Local", None, msg)
                 log_alert("High", "Local", None, msg)
                 self.recent_mods.clear()

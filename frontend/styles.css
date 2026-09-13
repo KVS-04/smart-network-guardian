@@ -7,8 +7,8 @@
     --text-main: #e2e8f0;
     --text-muted: #94a3b8;
     
-    --accent-blue: #3b82f6;
-    --accent-blue-hover: #60a5fa;
+    --accent-color: #3b82f6;
+    --accent-hover: #60a5fa;
     --accent-green: #10b981;
     --accent-red: #ef4444;
     --accent-orange: #f59e0b;
@@ -65,7 +65,7 @@ body {
 
 .logo-icon {
     font-size: 24px;
-    filter: drop-shadow(0 0 8px var(--accent-blue));
+    filter: drop-shadow(0 0 8px var(--accent-color));
 }
 
 .logo h1 {
@@ -106,8 +106,8 @@ body {
 
 .nav-item.active {
     background-color: rgba(59, 130, 246, 0.1);
-    color: var(--accent-blue);
-    border-left: 3px solid var(--accent-blue);
+    color: var(--accent-color);
+    border-left: 3px solid var(--accent-color);
 }
 
 .status-indicator {
@@ -179,12 +179,12 @@ body {
 
 .btn.primary {
     background-color: rgba(59, 130, 246, 0.1);
-    color: var(--accent-blue);
+    color: var(--accent-color);
     border-color: rgba(59, 130, 246, 0.3);
 }
 
 .btn.primary:hover {
-    background-color: var(--accent-blue);
+    background-color: var(--accent-color);
     color: #fff;
     box-shadow: var(--shadow-glow);
 }
@@ -211,6 +211,16 @@ body {
     background-color: var(--accent-orange);
     color: #fff;
     box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+}
+
+.btn.warning {
+    background-color: var(--accent-orange);
+    color: white;
+}
+
+.btn.warning:hover {
+    background-color: #d97706;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
 }
 
 .btn.danger {
@@ -268,7 +278,7 @@ body {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; height: 3px;
-    background: var(--accent-blue);
+    background: var(--accent-color);
     opacity: 0.5;
 }
 
@@ -299,7 +309,7 @@ body {
 
 .danger-card .stat-value { color: var(--accent-red); }
 .warning-card .stat-value { color: var(--accent-orange); }
-.info-card .stat-value { color: var(--accent-blue); }
+.info-card .stat-value { color: var(--accent-color); }
 
 /* Panels */
 .panel {
@@ -331,7 +341,7 @@ body {
 
 .alert-item {
     background: var(--bg-hover);
-    border-left: 4px solid var(--accent-blue);
+    border-left: 4px solid var(--accent-color);
     padding: 16px;
     border-radius: 6px;
     transition: var(--transition-fast);
