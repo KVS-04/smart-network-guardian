@@ -146,7 +146,12 @@ def compute_threat_score(device_info, traffic_stats=None):
         score += 1
         reasons.append(f"Multiple open ports ({len(open_ports)})")
         
-    suspicious = {22,23,3389,445,5900}
+    ports_str = get_config_val("suspicious_ports") or "22, 23, 445, 3389, 5900"
+    suspicious = set()
+    for p in ports_str.replace(" ", "").split(","):
+        if p.isdigit():
+            suspicious.add(int(p))
+            
     found_suspicious = [p for p in open_ports if p in suspicious]
     if found_suspicious:
         score += 2

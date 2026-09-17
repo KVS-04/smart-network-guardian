@@ -318,6 +318,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const nmapPathInput = document.getElementById('nmap-path');
     const ppsThresholdInput = document.getElementById('pps-threshold');
     const scanIntervalSelect = document.getElementById('scan-interval');
+    const suspiciousPortsInput = document.getElementById('suspicious-ports');
+    const currentSusPortsDisplay = document.getElementById('current-sus-ports-display');
     
     let autoScanTimer = null;
 
@@ -343,6 +345,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (data.nmap_path) nmapPathInput.value = data.nmap_path;
             if (data.pps_threshold) ppsThresholdInput.value = data.pps_threshold;
+            if (data.suspicious_ports) {
+                suspiciousPortsInput.value = data.suspicious_ports;
+                currentSusPortsDisplay.textContent = data.suspicious_ports;
+            }
             if (data.scan_interval !== undefined) {
                 scanIntervalSelect.value = data.scan_interval;
                 setupAutoScan(data.scan_interval);
@@ -363,6 +369,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             if (data.status === 'success') {
                 alert("Settings saved successfully!");
+                if (updates.suspicious_ports !== undefined) {
+                    currentSusPortsDisplay.textContent = updates.suspicious_ports;
+                }
             }
         } catch (e) {
             alert(`Error saving config: ${e.message}`);
@@ -375,6 +384,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('save-pps-btn').addEventListener('click', () => {
         saveConfig({ pps_threshold: parseInt(ppsThresholdInput.value, 10) });
+    });
+
+    document.getElementById('save-ports-btn').addEventListener('click', () => {
+        saveConfig({ suspicious_ports: suspiciousPortsInput.value.trim() });
     });
 
     document.getElementById('save-interval-btn').addEventListener('click', () => {

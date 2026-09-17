@@ -7,7 +7,8 @@ DEFAULT_CONFIG = {
     "nmap_path": "",
     "pps_threshold": 100,
     "theme": "default",
-    "scan_interval": 0  # 0 means never
+    "scan_interval": 0,  # 0 means never
+    "suspicious_ports": "22, 23, 445, 3389, 5900"
 }
 
 def load_config():
